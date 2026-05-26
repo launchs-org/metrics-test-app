@@ -37,6 +37,7 @@ func main() {
 	api.GET("/workdir", handler.Workdir)
 	api.GET("/sysinfo", handler.SysInfo)
 	api.GET("/dir", handler.DirExplorer)
+	api.GET("/file", handler.FileServe)
 	api.GET("/stress/status", stressHandler.Status)
 	api.POST("/stress/cpu/start", stressHandler.CPUStart)
 	api.POST("/stress/cpu/stop", stressHandler.CPUStop)

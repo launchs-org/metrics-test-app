@@ -503,6 +503,161 @@
 
     /* ── Live metrics card (stress tab) ── */
     .live-card .card-header { border-bottom: 1px solid var(--border); }
+
+    /* ── Dir: ファイル行をクリック可能に ── */
+    .dir-item.file-previewable { cursor: pointer; }
+    .dir-item.file-previewable:hover { background: #f8f9fa; }
+    .dir-item.file-previewable .material-icons { color: var(--primary); }
+
+    /* ── プレビューモーダル ── */
+    .preview-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.54);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      animation: fade-in .15s ease;
+    }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+    .preview-dialog {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 30px rgba(0,0,0,.3);
+      display: flex;
+      flex-direction: column;
+      max-width: 90vw;
+      max-height: 90vh;
+      width: 860px;
+      overflow: hidden;
+      animation: dialog-in .18s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes dialog-in { from { transform: scale(.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .preview-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .preview-header .material-icons { color: var(--primary); font-size: 20px; }
+    .preview-filename {
+      flex: 1;
+      font-family: 'Roboto Mono', monospace;
+      font-size: .9rem;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .preview-close {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+    .preview-close:hover { background: var(--bg); }
+    .preview-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      flex-shrink: 0;
+    }
+    .preview-body {
+      flex: 1;
+      overflow: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #1e1e1e;
+      min-height: 200px;
+    }
+    .preview-body.light-bg { background: var(--bg); }
+    .preview-body img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .preview-body video,
+    .preview-body audio {
+      max-width: 100%;
+      outline: none;
+    }
+    .preview-body audio { margin: 32px; }
+    .preview-body pre {
+      margin: 0;
+      padding: 20px 24px;
+      font-family: 'Roboto Mono', monospace;
+      font-size: .82rem;
+      line-height: 1.6;
+      color: #d4d4d4;
+      white-space: pre-wrap;
+      word-break: break-all;
+      width: 100%;
+      align-self: flex-start;
+    }
+    .preview-body .preview-unsupported {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 40px;
+      color: var(--text-secondary);
+    }
+    .preview-body .preview-unsupported .material-icons { font-size: 48px; color: var(--border); }
+    .preview-loading {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #aaa;
+      font-size: .9rem;
+    }
+    .preview-loading .spinner { border-color: #555; border-top-color: var(--primary); }
+    .preview-size-info {
+      font-size: .78rem;
+      color: var(--text-secondary);
+      margin-left: auto;
+    }
+
+    /* ── プレビュー: サイズ警告バナー ── */
+    .preview-size-warning {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px;
+      background: #fef3e2;
+      border-bottom: 1px solid #f9ab00;
+      font-size: .85rem;
+      color: #7a4600;
+      flex-shrink: 0;
+    }
+    .preview-size-warning .material-icons { font-size: 18px; color: var(--orange); flex-shrink: 0; }
+    .preview-size-warning .warn-action {
+      margin-left: auto;
+      background: none;
+      border: 1px solid #f9ab00;
+      border-radius: 4px;
+      color: #7a4600;
+      font-size: .8rem;
+      font-weight: 500;
+      padding: 4px 10px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .preview-size-warning .warn-action:hover { background: #fde9b8; }
   </style>
 </head>
 <body>
@@ -734,6 +889,33 @@
 
 <div id="snackbar"></div>
 
+<!-- プレビューモーダル -->
+<div class="preview-backdrop" id="previewBackdrop" style="display:none" onclick="closePreview(event)">
+  <div class="preview-dialog" onclick="event.stopPropagation()">
+    <div class="preview-header">
+      <span class="material-icons" id="previewIcon">insert_drive_file</span>
+      <span class="preview-filename" id="previewFilename"></span>
+      <span class="preview-size-info" id="previewSizeInfo"></span>
+      <button class="preview-close" onclick="closePreview()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="preview-size-warning" id="previewSizeWarning" style="display:none">
+      <span class="material-icons">warning</span>
+      <span id="previewSizeWarningMsg"></span>
+      <button class="warn-action" id="previewForceBtn">それでも表示する</button>
+    </div>
+    <div class="preview-actions">
+      <a id="previewDownload" class="icon-btn" style="text-decoration:none" download>
+        <span class="material-icons">download</span>ダウンロード
+      </a>
+    </div>
+    <div class="preview-body" id="previewBody">
+      <div class="preview-loading"><div class="spinner"></div>読み込み中...</div>
+    </div>
+  </div>
+</div>
+
 <script>
 const BASE = '';
 let envData = [];
@@ -926,15 +1108,156 @@ function renderDir(current, entries) {
         <span class="dir-meta">フォルダ</span>
       </li>`;
     } else {
-      html += `<li class="dir-item file">
-        <span class="material-icons">insert_drive_file</span>
+      const info = fileTypeInfo(entry.name);
+      const escapedPath = entry.path.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      html += `<li class="dir-item ${info.previewable ? 'file-previewable' : 'file'}"
+          ${info.previewable ? `onclick="openPreview('${escapedPath}', ${entry.size})"` : ''}>
+        <span class="material-icons" style="color:${info.color}">${info.icon}</span>
         <span class="dir-name">${esc(entry.name)}</span>
-        <span class="dir-meta">${fmtSize(entry.size)}</span>
+        <span class="dir-meta">${fmtSize(entry.size)}${info.previewable ? ' — プレビュー可' : ''}</span>
       </li>`;
     }
   }
   list.innerHTML = html;
 }
+
+// ── ファイル種別判定 ──
+function fileTypeInfo(name) {
+  const ext = name.split('.').pop().toLowerCase();
+  const types = {
+    image:  { exts: ['png','jpg','jpeg','gif','webp','svg','ico','bmp','avif'], icon: 'image',       color: '#34a853' },
+    video:  { exts: ['mp4','webm','mov','avi','mkv','ogv'],                    icon: 'movie',        color: '#ea4335' },
+    audio:  { exts: ['mp3','wav','ogg','flac','aac','m4a'],                    icon: 'music_note',   color: '#9c27b0' },
+    text:   { exts: ['txt','log','md','yaml','yml','json','toml','ini','cfg',
+                     'conf','sh','bash','zsh','env','csv','xml','html','css',
+                     'js','ts','go','py','rb','rs','java','c','cpp','h','sql',
+                     'dockerfile','makefile','gitignore'],                     icon: 'description',  color: '#1a73e8' },
+    pdf:    { exts: ['pdf'],                                                   icon: 'picture_as_pdf', color: '#e37400' },
+  };
+  for (const [kind, def] of Object.entries(types)) {
+    if (def.exts.includes(ext) || def.exts.includes(name.toLowerCase())) {
+      return { kind, icon: def.icon, color: def.color, previewable: true };
+    }
+  }
+  return { kind: 'binary', icon: 'insert_drive_file', color: '#5f6368', previewable: false };
+}
+
+// ── プレビューモーダル ──
+
+// 種別ごとの警告しきい値 (bytes)
+const PREVIEW_WARN = {
+  text:  512  * 1024,        //  512 KB
+  image: 20   * 1024 * 1024, //   20 MB
+  video: 500  * 1024 * 1024, //  500 MB
+  audio: 100  * 1024 * 1024, //  100 MB
+  pdf:   50   * 1024 * 1024, //   50 MB
+};
+
+function openPreview(filePath, fileSize) {
+  const info = fileTypeInfo(filePath.split('/').pop());
+  const url = '/api/file?path=' + encodeURIComponent(filePath);
+  const warnEl = document.getElementById('previewSizeWarning');
+  const warnMsg = document.getElementById('previewSizeWarningMsg');
+  const forceBtn = document.getElementById('previewForceBtn');
+
+  document.getElementById('previewFilename').textContent = filePath.split('/').pop();
+  document.getElementById('previewSizeInfo').textContent = fmtSize(fileSize);
+  document.getElementById('previewIcon').textContent = info.icon;
+  document.getElementById('previewDownload').href = url;
+  document.getElementById('previewDownload').download = filePath.split('/').pop();
+
+  const body = document.getElementById('previewBody');
+  body.className = 'preview-body';
+
+  // 前回のforce ボタンリスナーを解除
+  const newForceBtn = forceBtn.cloneNode(true);
+  forceBtn.parentNode.replaceChild(newForceBtn, forceBtn);
+
+  const limit = PREVIEW_WARN[info.kind];
+  const overLimit = limit !== undefined && fileSize > limit;
+
+  if (overLimit) {
+    const limitLabel = fmtSize(limit);
+    const sizeLabel = fmtSize(fileSize);
+    warnMsg.textContent = `ファイルサイズが ${sizeLabel} あります（推奨上限: ${limitLabel}）。ブラウザが重くなる可能性があります。`;
+    warnEl.style.display = 'flex';
+    // 警告のみ表示し、プレビューは空のまま待機
+    body.innerHTML = `<div class="preview-unsupported" style="color:#aaa">
+      <span class="material-icons" style="color:#555;font-size:48px">warning_amber</span>
+      <span>上の警告を確認してください</span>
+    </div>`;
+    newForceBtn.addEventListener('click', () => {
+      warnEl.style.display = 'none';
+      body.innerHTML = '<div class="preview-loading"><div class="spinner"></div>読み込み中...</div>';
+      renderPreview(info.kind, url, fileSize, body);
+    });
+  } else {
+    warnEl.style.display = 'none';
+    body.innerHTML = '<div class="preview-loading"><div class="spinner"></div>読み込み中...</div>';
+    renderPreview(info.kind, url, fileSize, body);
+  }
+
+  document.getElementById('previewBackdrop').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+async function renderPreview(kind, url, fileSize, body) {
+  try {
+    if (kind === 'image') {
+      body.classList.add('light-bg');
+      body.innerHTML = `<img src="${url}" alt="preview" onerror="previewError(this.parentElement)" />`;
+
+    } else if (kind === 'video') {
+      body.innerHTML = `<video controls autoplay muted src="${url}" onerror="previewError(this.parentElement)"></video>`;
+
+    } else if (kind === 'audio') {
+      body.classList.add('light-bg');
+      body.innerHTML = `<audio controls src="${url}" onerror="previewError(this.parentElement)"></audio>`;
+
+    } else if (kind === 'pdf') {
+      body.classList.add('light-bg');
+      body.style.padding = '0';
+      body.innerHTML = `<iframe src="${url}" style="width:100%;height:100%;border:none;min-height:600px"></iframe>`;
+
+    } else if (kind === 'text') {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('取得失敗');
+      const text = await res.text();
+      body.innerHTML = `<pre>${esc(text)}</pre>`;
+    }
+  } catch (err) {
+    body.classList.add('light-bg');
+    body.innerHTML = unsupportedHtml('読み込みエラー: ' + err.message);
+  }
+}
+
+function unsupportedHtml(msg) {
+  return `<div class="preview-unsupported">
+    <span class="material-icons">error_outline</span>
+    <span>${esc(msg)}</span>
+  </div>`;
+}
+
+function previewError(bodyEl) {
+  bodyEl.classList.add('light-bg');
+  bodyEl.innerHTML = unsupportedHtml('ファイルの読み込みに失敗しました');
+}
+
+function closePreview(event) {
+  if (event && event.target !== document.getElementById('previewBackdrop')) return;
+  document.getElementById('previewBackdrop').style.display = 'none';
+  document.body.style.overflow = '';
+  // メモリ解放: video/audio の src を空にして停止
+  const body = document.getElementById('previewBody');
+  const media = body.querySelector('video, audio');
+  if (media) { media.pause(); media.src = ''; }
+  body.innerHTML = '';
+}
+
+// ESC キーで閉じる
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closePreview({ target: document.getElementById('previewBackdrop') });
+});
 
 // ── Stress ──
 async function cpuStart() {
